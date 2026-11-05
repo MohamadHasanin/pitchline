@@ -1,6 +1,4 @@
-.PHONY: all install lint test
-
-all: install lint test
+.PHONY: install lint test ingest
 
 install:
 	uv sync
@@ -11,3 +9,6 @@ lint:
 
 test:
 	uv run pytest
+
+ingest:
+	uv run python -m pitchline.ingest.statsbomb
