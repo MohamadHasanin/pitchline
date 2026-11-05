@@ -5,6 +5,7 @@ description = "football analytics pipeline: raw event data → canonical schema 
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "kloppy>=3.19.1",
     "pandera[pandas]>=0.35.0",
     "requests>=2.34.2",
 ]
