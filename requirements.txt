@@ -42,13 +42,17 @@ numpy==2.5.4
 packaging==26.3
     # via pandera
 pandas==3.1.1
-    # via pandera
+    # via
+    #   pandera
+    #   pitchline
 pandera==0.35.0
     # via pitchline
 propcache==0.5.4
     # via
     #   aiohttp
     #   yarl
+pyarrow==26.0.1
+    # via pitchline
 pydantic==2.14.3
     # via pandera
 pydantic-core==2.50.4
