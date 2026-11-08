@@ -18,8 +18,8 @@ from kloppy.domain import (
     SetPieceQualifier,
 )
 
-from pitchline.ingest.statsbomb import RAW_DIR
-from pitchline.schema import PITCH_LENGTH, PITCH_WIDTH
+from pitchline.ingest.statsbomb import MATCHES, RAW_DIR
+from pitchline.schema import PITCH_LENGTH, PITCH_WIDTH, EventSchema
 
 SOURCE = "statsbomb"
 SILVER_DIR = Path("data/silver/events") / SOURCE
@@ -36,6 +36,11 @@ PITCH = MetricPitchDimensions(
 # kloppy results (PassResult, ShotResult, DuelResult, ...) that count as a success;
 # every other result is a fail, and events without a result get no outcome.
 SUCCESS_RESULTS = {"COMPLETE", "GOAL", "WON", "SUCCESS"}
+
+# Provider locations can sit just off the pitch (e.g. a corner recorded at x=120.1 of 120).
+# Values within this many metres of an edge are moved onto it; anything further is left
+# unchanged so EventSchema rejects it as a real error.
+EDGE_TOLERANCE = 1.0
 
 
 def load_match(match_id: int) -> EventDataset:
@@ -61,6 +66,15 @@ def qualifier(event: Event, kind: type) -> str | None:
         if isinstance(q, kind):
             return q.value.name.lower()
     return None
+
+
+def on_pitch(value: float, upper: float) -> float:
+    """Move `value` onto the [0, upper] range if it's within EDGE_TOLERANCE of an edge."""
+    if -EDGE_TOLERANCE <= value < 0:
+        return 0.0
+    if upper < value <= upper + EDGE_TOLERANCE:
+        return upper
+    return value
 
 
 def end_point(event: Event) -> Point | None:
@@ -117,10 +131,10 @@ def to_canonical(dataset: EventDataset, match_id: int) -> pd.DataFrame:
                 "player_id": e.player.player_id if e.player else None,
                 "event_type": e.event_type.name.lower(),
                 "outcome": outcome(e),
-                "x": start.x if start else None,
-                "y": start.y if start else None,
-                "end_x": end.x if end else None,
-                "end_y": end.y if end else None,
+                "x": on_pitch(start.x, PITCH_LENGTH) if start else None,
+                "y": on_pitch(start.y, PITCH_WIDTH) if start else None,
+                "end_x": on_pitch(end.x, PITCH_LENGTH) if end else None,
+                "end_y": on_pitch(end.y, PITCH_WIDTH) if end else None,
                 "body_part": qualifier(e, BodyPartQualifier),
                 "set_piece_type": qualifier(e, SetPieceQualifier),
                 "xg": xg(e),
@@ -128,3 +142,26 @@ def to_canonical(dataset: EventDataset, match_id: int) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(rows)
+
+
+def write_match(match_id: int) -> Path:
+    """Convert one match, validate it against EventSchema, and write it as Parquet."""
+    events = EventSchema.validate(to_canonical(load_match(match_id), match_id))
+    path = SILVER_DIR / f"{match_id}.parquet"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    events.to_parquet(tmp, index=False)
+    tmp.replace(path)  # atomic: a crash never leaves a partial file at `path`
+    return path
+
+
+def adapt() -> None:
+    """Rebuild silver events for every match in the raw match list."""
+    matches = json.loads((RAW_DIR / MATCHES).read_bytes())
+    for i, m in enumerate(matches, start=1):
+        path = write_match(m["match_id"])
+        print(f"[{i}/{len(matches)}] {path}")
+
+
+if __name__ == "__main__":
+    adapt()

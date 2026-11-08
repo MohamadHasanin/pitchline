@@ -1,4 +1,4 @@
-.PHONY: install lint test ingest
+.PHONY: install lint test ingest silver
 
 install:
 	uv sync
@@ -12,3 +12,6 @@ test:
 
 ingest:
 	uv run python -m pitchline.ingest.statsbomb
+
+silver:
+	uv run python -m pitchline.adapters.statsbomb
