@@ -12,8 +12,9 @@ OUTCOMES = ("success", "fail")
 
 # Coordinate frame: a standard 105 x 68 m pitch (FIFA's recommended size, also used by SPADL).
 # Providers each use their own system (StatsBomb 120 x 80, Wyscout/Opta 0-100, kloppy 0-1),
-# so every adapter must rescale to this frame and orient it so the team in possession
-# attacks left to right. Origin (0, 0) is a corner; x runs along the length, y across the width.
+# so every adapter must rescale to this frame and orient it so the team performing each event
+# attacks left to right (as in SPADL and StatsBomb), even for defensive actions.
+# Origin (0, 0) is a corner; x runs along the length, y across the width.
 # Values are standardized metres: real pitch sizes vary and providers don't record them.
 PITCH_LENGTH = 105.0
 PITCH_WIDTH = 68.0
