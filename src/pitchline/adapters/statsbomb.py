@@ -12,8 +12,11 @@ from kloppy.domain import (
     EventDataset,
     EventType,
     ExpectedGoals,
+    GoalkeeperQualifier,
     MetricPitchDimensions,
     Orientation,
+    PassQualifier,
+    PassType,
     Point,
     SetPieceQualifier,
 )
@@ -105,6 +108,11 @@ def extra(event: Event, event_id: str) -> str:
         fields["result"] = event.result.name.lower()
     if card := getattr(event, "card_type", None):  # only on card events
         fields["card"] = card.name.lower()  # first_yellow, second_yellow or red
+    # SPADL tells crosses and goalkeeper actions apart; a pass can have several pass qualifiers.
+    if PassQualifier(PassType.CROSS) in (event.qualifiers or []):
+        fields["pass_type"] = "cross"
+    if keeper := qualifier(event, GoalkeeperQualifier):
+        fields["keeper"] = keeper  # save, claim, punch, pick_up, ...
     return json.dumps(fields)
 
 
