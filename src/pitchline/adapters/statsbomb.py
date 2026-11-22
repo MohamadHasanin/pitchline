@@ -8,6 +8,8 @@ from kloppy import statsbomb
 from kloppy.domain import (
     BodyPartQualifier,
     Dimension,
+    DuelQualifier,
+    DuelType,
     Event,
     EventDataset,
     EventType,
@@ -111,8 +113,16 @@ def extra(event: Event, event_id: str) -> str:
     # SPADL tells crosses and goalkeeper actions apart; a pass can have several pass qualifiers.
     if PassQualifier(PassType.CROSS) in (event.qualifiers or []):
         fields["pass_type"] = "cross"
+    if PassQualifier(PassType.HIGH_PASS) in (event.qualifiers or []):
+        fields["pass_height"] = "high"  # decides crossed vs short corners and free kicks
     if keeper := qualifier(event, GoalkeeperQualifier):
         fields["keeper"] = keeper  # save, claim, punch, pick_up, ...
+    # A duel can carry several kinds (e.g. aerial + loose ball); keep the first in this order,
+    # since SPADL only counts ground duels (as tackles).
+    kinds = {q.value for q in event.qualifiers or [] if isinstance(q, DuelQualifier)}
+    order = (DuelType.AERIAL, DuelType.GROUND, DuelType.LOOSE_BALL)
+    if kind := next((k for k in order if k in kinds), None):
+        fields["duel"] = kind.name.lower()  # aerial, ground or loose_ball
     return json.dumps(fields)
 
 
